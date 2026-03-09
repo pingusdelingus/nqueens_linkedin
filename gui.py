@@ -19,6 +19,9 @@ class GUIState:
         self.population = []
         self.best_board = None
 
+
+pal_colors = [(0,1,0), (1,0,0), (1,1,0), (0,0,1), (1,0,1), (0,1,1), (1,1,1), (0,0,0), (0.18,0.10,0.20), (1,0.64, 0)]
+
 state = GUIState()
 
 def main():
@@ -53,12 +56,11 @@ def main():
 
         imgui.separator()
         imgui.text("Color Palette")
-        for i in range(8):
+        for i, (r,g,b)  in enumerate(pal_colors):
             imgui.push_id(str(f"palette_{i}"))
-            r, g, b = [(0,1,0), (1,0,0), (1,1,0), (0,0,1), (1,0,1), (0,1,1), (1,1,1), (0,0,0)][i]
             if imgui.color_button(f"Color {i}", r, g, b, 1.0, width=30, height=30):
                 state.current_color_selection = i
-            if i < 7: imgui.same_line()
+            if (i+1) %3 != 0: imgui.same_line()
             imgui.pop_id()
 
         imgui.separator()
@@ -99,17 +101,13 @@ def main():
         
         cell_size = 500 // state.sidelen
         
-        ui_colors = [
-            (0, 0.5, 0), (0.5, 0, 0), (0.5, 0.5, 0), (0, 0, 0.5), 
-            (0.5, 0, 0.5), (0, 0.5, 0.5), (0.8, 0.8, 0.8), (0.1, 0.1, 0.1)
-        ]
 
         for r in range(state.sidelen):
             for c in range(state.sidelen):
                 imgui.push_id(f"cell_{r}_{c}")
                 
                 color_idx = state.grid[r][c]
-                cur_r, cur_g, cur_b = ui_colors[color_idx]
+                cur_r, cur_g, cur_b = pal_colors[color_idx]
                 
                 label = "##tile"
                 if state.best_board and state.best_board.rep[r][c].hasQueen():
