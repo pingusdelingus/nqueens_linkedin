@@ -1,0 +1,4 @@
+colorama
+imgui[pygame]
+opengl
+pygame
