@@ -27,19 +27,18 @@ class Board():
     def __lt__(self, other):
             if isinstance(other, Board):
                 return self.fitness < other.fitness
-            return NotImplemented # Optional: handle comparisons with other types
+            return NotImplemented 
 
     def __gt__(self, other):
             if isinstance(other, Board):
                 return self.fitness > other.fitness
-            return NotImplemented # Optional: handle comparisons with other types
+            return NotImplemented
 
     def initFitness(self):
         return fitness(self)
     def getFitness(self):
         return self.fitness
         
-    # Overload the == operator (equal to)
     def __eq__(self, other):
         """Checks if two Person objects are equal based on name and age."""
         if isinstance(other, Board):
@@ -71,14 +70,12 @@ class Board():
 
 
 def coin_flip():
-    # Returns True if the random number is less than 0.5, False otherwise
     return random.random() < 0.5
 
 
 def generateRandomBoardsOnRow(sidelen:int, numColors:int, colormap:list[int]):
-    """Generate a row with EXACTLY one queen at a random position"""
     ans = []
-    queen_col = random.randint(0, sidelen - 1)  # Pick ONE column for the queen
+    queen_col = random.randint(0, sidelen - 1)  
     
     for i in range(sidelen):
         is_queen = (i == queen_col)
@@ -124,7 +121,6 @@ def fitness(b: Board) -> int:
     queen_conflicts = 0
     queen_pos = []
 
-    # Collect all queen positions
     for i in range(b.squareLen):
         for j in range(b.squareLen):
             curr = b.rep[i][j]
@@ -134,33 +130,32 @@ def fitness(b: Board) -> int:
     numQueens = len(queen_pos)
     expected_queens = b.squareLen
     
-    # MASSIVE penalty for wrong number of queens
     if numQueens != expected_queens:
         queen_conflicts += abs(numQueens - expected_queens) * 1000
     
-    # Only check conflicts if we have queens to check
     for i in range(numQueens):
         for j in range(i + 1, numQueens):
             r1, c1, sq1 = queen_pos[i]
             r2, c2, sq2 = queen_pos[j]
 
-            # Row conflict
+            # row conflict
             if r1 == r2: 
                 queen_conflicts += 10
             
-            # Column conflict
+            # column conflict
             if c1 == c2: 
                 queen_conflicts += 10
             
-            # Color conflict
+            # color conflict
             if sq1.color_int == sq2.color_int: 
                 color_conflicts += 10
             
-            # Adjacency conflict (touching)
+            # adjacency conflict (touching)
             if abs(r1 - r2) <= 1 and abs(c1 - c2) <= 1:
                 queen_conflicts += 10
 
     b.queen_conf = queen_conflicts
+
     b.color_conf = color_conflicts
     
     return color_conflicts + queen_conflicts
@@ -236,12 +231,8 @@ def swapInPlace(rowA: list, rowB: list, snip: int):
 def crossover(this:Board, that:Board):
     split_point = random.randint(0, this.squareLen - 1)
 
-    # Swap entire row references from the split point to the end
-    # This ensures if Parent A had 1 queen per row, the child still does.
-    this.rep[split_point:], that.rep[split_point:] = \
-        that.rep[split_point:], this.rep[split_point:]
+    this.rep[split_point:], that.rep[split_point:] = that.rep[split_point:], this.rep[split_point:]
     
-    # Recalculate fitness for both
     this.fitness = this.initFitness()
     that.fitness = that.initFitness()
     return
@@ -253,26 +244,25 @@ def crossover(this:Board, that:Board):
 def crossover_population(sorted_population: list[Board]):
     """FIXED: Proper elitism and child retention"""
     pop_size = len(sorted_population)
-    elite_size = pop_size // 4  # Keep top 25%
+    elite_size = pop_size // 4  
     
-    # Keep elite unchanged
     new_population = sorted_population[:elite_size]
     
-    # Generate offspring to fill the rest
     while len(new_population) < pop_size:
-        # Select two parents from elite
         parent1 = random.choice(sorted_population[:elite_size])
+
         parent2 = random.choice(sorted_population[:elite_size])
+
         
         child1, child2 = smart_crossover(parent1, parent2)
         child1.fitness = child1.initFitness()
+
         child2.fitness = child2.initFitness()
         
         new_population.append(child1)
         if len(new_population) < pop_size:
             new_population.append(child2)
     
-    # Replace old population
     sorted_population[:] = new_population
 
 
@@ -283,12 +273,10 @@ def mutate(board:Board, mutation_rate = 0.1):
         row_idx = random.randint(0, board.squareLen - 1)
         row = board.rep[row_idx]
         
-        # Find where the current queen is and remove it
         for sq in row:
             sq.setEmpty()
             sq.hasQ = False
             
-        # Place it in a new random column in the same row
         new_col = random.randint(0, board.squareLen - 1)
         row[new_col].setQueen()
         row[new_col].hasQ = True
@@ -297,55 +285,44 @@ def mutate(board:Board, mutation_rate = 0.1):
 
 NUM_MUTATION = 100
 def do_mutate(population, num_mutations=None):
-    """Mutate a percentage of the population"""
     if num_mutations is None:
-        num_mutations = len(population) // 2  # Mutate 50%
+        num_mutations = len(population) // 2  
     
-    # Don't mutate the very best solution
     for _ in range(num_mutations):
         idx = random.randint(1, len(population) - 1)
+
         smart_mutate(population[idx], rate=0.5)
 
 
 
 def smart_crossover(parentA: Board, parentB: Board):
-    # 1. Create children as deep copies to avoid modifying parents directly
     childA_rep = deepcopy(parentA.rep)
     childB_rep = deepcopy(parentB.rep)
     
     split = random.randint(1, parentA.squareLen - 2)
     
-    # 2. Swap the segments
     childA_rep[split:], childB_rep[split:] = childB_rep[split:], childA_rep[split:]
     
-    # 3. HEURISTIC REPAIR: 
-    # If a child now has 2 queens in one color, move one of them 
-    # to a row/column in that same row that belongs to a missing color.
-    # (This is complex to code but makes the GA 10x faster)
     
     return Board(childA_rep, parentA.squareLen, setup=False), Board(childB_rep, parentA.squareLen, setup=False)
 
 def check_spot_conflicts(board: Board, row_idx: int, col_idx: int) -> int:
-    """Calculate conflicts for a queen at (row_idx, col_idx)"""
     conflicts = 0
     target_color = board.rep[row_idx][col_idx].color_int
 
     for r in range(board.squareLen):
-        if r == row_idx:  # Skip the current row
+        if r == row_idx:  
             continue
             
         for c in range(board.squareLen):
             sq = board.rep[r][c]
             if sq.hasQueen():
-                # Column conflict
                 if c == col_idx:
                     conflicts += 10
                 
-                # Color zone conflict
                 if sq.color_int == target_color:
                     conflicts += 10
                 
-                # Adjacency conflict
                 if abs(r - row_idx) <= 1 and abs(c - col_idx) <= 1:
                     conflicts += 10
                     
@@ -357,12 +334,10 @@ def check_spot_conflicts(board: Board, row_idx: int, col_idx: int) -> int:
 
 
 def set_queen_at(board: Board, row_idx: int, best_col: int):
-    # You must clear the row first!
     for c in range(board.squareLen):
         board.rep[row_idx][c].setEmpty()
         board.rep[row_idx][c].hasQ = False
     
-    # Now set the new one
     board.rep[row_idx][best_col].setQueen()
     board.rep[row_idx][best_col].hasQ = True
 
@@ -373,7 +348,6 @@ def smart_mutate(board: Board, rate=0.5):
     
     row_idx = random.randint(0, board.squareLen - 1)
     
-    # Find column with minimum conflicts
     best_col = 0
     min_conflicts = float('inf')
     
@@ -383,16 +357,14 @@ def smart_mutate(board: Board, rate=0.5):
             min_conflicts = conf
             best_col = c
     
-    # Clear all queens in this row
+    # clear all queens in this row
     for c in range(board.squareLen):
         board.rep[row_idx][c].setEmpty()
         board.rep[row_idx][c].hasQ = False
     
-    # Set queen at best position
     board.rep[row_idx][best_col].setQueen()
     board.rep[row_idx][best_col].hasQ = True
     
-    # IMPORTANT: Actually update the fitness!
     board.fitness = fitness(board)
 
 
@@ -403,9 +375,8 @@ def main():
     b = Board(m, len(m))
     print(b)
 
-    # Generate initial population
     list_of_random_boards = generateRandomBoardsFromColorMap(
-        500,  # Smaller population for speed
+        500,  
         len(m[0]), 
         getUniqueColorCount(b), 
         m
@@ -416,25 +387,21 @@ def main():
     stagnant_count = 0
     
     while generations > 0:
-        # Sort population
         list_of_random_boards.sort(key=lambda x: x.fitness)
         
         current_best = list_of_random_boards[0].fitness
         
-        # Check for solution
         if current_best == 0:
             print(f"SOLUTION FOUND at generation {5000 - generations}!")
             print(list_of_random_boards[0])
             break
         
-        # Track stagnation
         if current_best >= best_ever:
             stagnant_count += 1
         else:
             stagnant_count = 0
             best_ever = current_best
         
-        # Increase mutation if stuck
         if stagnant_count > 50:
             print(f"⚠ Stuck at fitness {current_best}, increasing mutation...")
             do_mutate(list_of_random_boards, len(list_of_random_boards))
@@ -454,7 +421,6 @@ def main():
 
         #print(list_of_random_boards[-1])
 
-        # Evolve
         crossover_population(list_of_random_boards)
         do_mutate(list_of_random_boards)
         
